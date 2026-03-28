@@ -8,4 +8,7 @@ class DashboardMetrics(BaseModel):
     divergencia_vermelho: int = 0
     taxa_divergencias_pct: float = 0.0
     tempo_medio_ms: float | None = None
+    media_risco: float | None = None
     top_inconsistencies: list[dict[str, str | int]] = Field(default_factory=list)
+    distribuicao_criticidade: list[dict[str, str | int]] = Field(default_factory=list)
+    distribuicao_status_campos: list[dict[str, str | int]] = Field(default_factory=list)

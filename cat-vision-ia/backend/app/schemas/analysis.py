@@ -17,6 +17,11 @@ class FieldResultRead(ORMModel):
     status: str
     confidence: float | None = None
     justification: str | None = None
+    criticality: str | None = None
+    category: str | None = None
+    evidence_excerpt: str | None = None
+    evidence_page: int | None = None
+    score_impact: float | None = None
 
 
 class CnpjValidationRead(ORMModel):
@@ -42,6 +47,7 @@ class AnalysisListItem(ORMModel):
     created_at: datetime | None = None
     art_numero: str | None = None
     upload_original_name: str | None = None
+    summary_hint: str | None = None
 
 
 class AnalysisDetailRead(ORMModel):
@@ -61,6 +67,13 @@ class AnalysisDetailRead(ORMModel):
     field_results: list[FieldResultRead] = Field(default_factory=list)
     tables: list[TableExtractionRead] = Field(default_factory=list)
     cnpj_validation: CnpjValidationRead | None = None
+    technical_opinion: str | None = None
+    score_breakdown: dict[str, Any] | None = None
+    review_status: str | None = None
+
+
+class AnalysisReviewUpdate(BaseModel):
+    review_status: str
 
 
 class ReportRead(BaseModel):

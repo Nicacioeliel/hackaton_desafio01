@@ -8,6 +8,28 @@ export interface FieldResult {
   status: string;
   confidence: number | null;
   justification: string | null;
+  criticality?: string | null;
+  category?: string | null;
+  evidence_excerpt?: string | null;
+  evidence_page?: number | null;
+  score_impact?: number | null;
+}
+
+/** Breakdown explicável do score (API `score_breakdown`) */
+export interface ScoreBreakdown {
+  risk_score: number;
+  lines: string[];
+  counts: {
+    divergencias_criticas: number;
+    divergencias_medias: number;
+    divergencias_baixas: number;
+    ausentes: number;
+    nao_identificados: number;
+    nao_verificados: number;
+    alerta_metadado: boolean;
+    cnpj_api_indisponivel: boolean;
+  };
+  fields_criticos: string[];
 }
 
 export interface TableExtraction {
@@ -42,6 +64,9 @@ export interface AnalysisDetail {
   field_results: FieldResult[];
   tables: TableExtraction[];
   cnpj_validation: CnpjValidation | null;
+  technical_opinion?: string | null;
+  score_breakdown?: ScoreBreakdown | null;
+  review_status?: string | null;
 }
 
 export interface AnalysisListItem {
@@ -54,4 +79,5 @@ export interface AnalysisListItem {
   created_at: string | null;
   art_numero: string | null;
   upload_original_name: string | null;
+  summary_hint?: string | null;
 }

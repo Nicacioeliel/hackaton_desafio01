@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AnalysisStepper } from "@/components/layout/AnalysisStepper";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ArtSelector } from "@/components/analysis/ArtSelector";
 import { FilePreviewCard } from "@/components/upload/FilePreviewCard";
@@ -50,7 +51,17 @@ export function NewAnalysisPage() {
         description="Envie o Atestado de Capacidade Técnica (PDF ou imagem), confira hash e metadados, escolha a ART simulada e execute a análise automatizada de apoio."
       />
 
-      <div className="grid gap-8 xl:grid-cols-2">
+      <AnalysisStepper
+        mode={{
+          kind: "nova-analise",
+          uploadReady: !!upload,
+          artReady: !!selectedArt,
+          processing: mutation.isPending,
+        }}
+        className="mt-6"
+      />
+
+      <div className="mt-8 grid gap-8 xl:grid-cols-2">
         <div className="space-y-6">
           <UploadDropzone onFile={onFile} disabled={uploading || mutation.isPending} />
           {err && <ErrorState message={err} />}

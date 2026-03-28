@@ -2,10 +2,12 @@ import csv
 import io
 import json
 import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_session
+from app.core.constants import CNPJ_STATUS_NAO_VERIFICADO, REVIEW_CORRECAO, REVIEW_REVISADO
 from app.models.analysis import Analysis
 from app.repositories.analysis_repository import AnalysisRepository
 from app.repositories.art_repository import ArtRepository
@@ -14,17 +16,35 @@ from app.schemas.analysis import (
     AnalysisCreateRequest,
     AnalysisDetailRead,
     AnalysisListItem,
+    AnalysisReviewUpdate,
     CnpjValidationRead,
     FieldResultRead,
     ReportRead,
 )
 from app.schemas.extraction import TableExtractionRead
-from app.services.comparison_service import FieldCompareResult
-from app.services.report_service import build_report_payload
+from app.services.field_result_adapter import orm_to_compare_results
+from app.services.pdf_report_service import build_analysis_pdf_bytes
+from app.services.report_service import (
+    build_report_payload,
+    regenerate_stored_opinion_from_analysis,
+)
 from app.workers.analysis_worker import run_analysis_pipeline
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+def _cnpj_api_failed_heuristic(a: Analysis) -> bool:
+    return a.cnpj_status == CNPJ_STATUS_NAO_VERIFICADO and a.cnpj_validation is None
+
+
+def _parse_breakdown(a: Analysis) -> dict | None:
+    if not a.score_breakdown_json:
+        return None
+    try:
+        return json.loads(a.score_breakdown_json)
+    except json.JSONDecodeError:
+        return None
 
 
 def _to_detail(a: Analysis) -> AnalysisDetailRead:
@@ -49,23 +69,14 @@ def _to_detail(a: Analysis) -> AnalysisDetailRead:
         cnpj_validation=CnpjValidationRead.model_validate(a.cnpj_validation)
         if a.cnpj_validation
         else None,
+        technical_opinion=a.technical_opinion,
+        score_breakdown=_parse_breakdown(a),
+        review_status=a.review_status or "PENDENTE",
     )
 
 
-def _fields_from_db(a: Analysis) -> list[FieldCompareResult]:
-    return [
-        FieldCompareResult(
-            field_name=f.field_name,
-            art_value=f.art_value,
-            extracted_value=f.extracted_value,
-            normalized_art=f.normalized_art_value or "",
-            normalized_extracted=f.normalized_extracted_value or "",
-            status=f.status,
-            confidence=f.confidence,
-            justification=f.justification,
-        )
-        for f in (a.field_results or [])
-    ]
+def _fields_from_db(a: Analysis):
+    return orm_to_compare_results(a.field_results or [])
 
 
 @router.post("", response_model=AnalysisDetailRead)
@@ -104,11 +115,29 @@ def list_analyses(
     limit: int = 50,
     status: str | None = Query(None),
     art_q: str | None = Query(None, description="Número da ART"),
+    q: str | None = Query(None, description="Busca em ART, profissional, contratante, arquivo"),
+    risk_min: float | None = Query(None),
+    risk_max: float | None = Query(None),
+    sort: str = Query("date_desc", description="date_desc | risk_desc | risk_asc"),
 ):
     repo = AnalysisRepository(db)
-    rows, _ = repo.list_page(skip=skip, limit=limit, status=status, art_query=art_q)
+    rows, _ = repo.list_page(
+        skip=skip,
+        limit=limit,
+        status=status,
+        art_query=art_q,
+        search_q=q,
+        risk_min=risk_min,
+        risk_max=risk_max,
+        sort=sort,
+    )
     out: list[AnalysisListItem] = []
     for a in rows:
+        hint = None
+        if a.executive_summary:
+            hint = a.executive_summary[:160].strip()
+            if len(a.executive_summary) > 160:
+                hint += "…"
         out.append(
             AnalysisListItem(
                 id=a.id,
@@ -120,6 +149,7 @@ def list_analyses(
                 created_at=a.created_at,
                 art_numero=a.art.numero_art if a.art else None,
                 upload_original_name=a.upload.original_name if a.upload else None,
+                summary_hint=hint,
             )
         )
     return out
@@ -130,6 +160,37 @@ def get_analysis(analysis_id: int, db: Session = Depends(get_session)):
     a = AnalysisRepository(db).get(analysis_id)
     if not a:
         raise HTTPException(404, detail="Análise não encontrada")
+    return _to_detail(a)
+
+
+@router.patch("/{analysis_id}/review", response_model=AnalysisDetailRead)
+def update_review(
+    analysis_id: int,
+    body: AnalysisReviewUpdate,
+    db: Session = Depends(get_session),
+):
+    a = AnalysisRepository(db).get(analysis_id)
+    if not a:
+        raise HTTPException(404, detail="Análise não encontrada")
+    allowed = {"PENDENTE", REVIEW_REVISADO, REVIEW_CORRECAO}
+    if body.review_status not in allowed:
+        raise HTTPException(400, detail="Status de revisão inválido")
+    a.review_status = body.review_status
+    db.commit()
+    db.refresh(a)
+    return _to_detail(a)
+
+
+@router.post("/{analysis_id}/parecer", response_model=AnalysisDetailRead)
+def regenerate_parecer(analysis_id: int, db: Session = Depends(get_session)):
+    a = AnalysisRepository(db).get(analysis_id)
+    if not a:
+        raise HTTPException(404, detail="Análise não encontrada")
+    opinion, bd_json = regenerate_stored_opinion_from_analysis(a)
+    a.technical_opinion = opinion
+    a.score_breakdown_json = bd_json
+    db.commit()
+    db.refresh(a)
     return _to_detail(a)
 
 
@@ -146,6 +207,7 @@ def get_report(analysis_id: int, db: Session = Depends(get_session)):
         a.risk_score,
         a.cnpj_status,
         bool(a.upload and a.upload.suspicious_metadata_flag),
+        cnpj_api_failed=_cnpj_api_failed_heuristic(a),
     )
     return ReportRead.model_validate(payload)
 
@@ -163,6 +225,7 @@ def export_json(analysis_id: int, db: Session = Depends(get_session)):
         a.risk_score,
         a.cnpj_status,
         bool(a.upload and a.upload.suspicious_metadata_flag),
+        cnpj_api_failed=_cnpj_api_failed_heuristic(a),
     )
     return Response(
         content=json.dumps(payload, ensure_ascii=False, indent=2),
@@ -183,10 +246,14 @@ def export_csv(analysis_id: int, db: Session = Depends(get_session)):
     w.writerow(
         [
             "field_name",
+            "category",
+            "criticality",
             "art_value",
             "extracted_value",
             "status",
             "confidence",
+            "score_impact",
+            "evidence_excerpt",
             "justification",
         ]
     )
@@ -194,10 +261,14 @@ def export_csv(analysis_id: int, db: Session = Depends(get_session)):
         w.writerow(
             [
                 f.field_name,
+                f.category or "",
+                f.criticality or "",
                 f.art_value or "",
                 f.extracted_value or "",
                 f.status,
                 f.confidence or "",
+                f.score_impact or "",
+                (f.evidence_excerpt or "").replace("\n", " ")[:500],
                 (f.justification or "").replace("\n", " "),
             ]
         )
@@ -206,5 +277,45 @@ def export_csv(analysis_id: int, db: Session = Depends(get_session)):
         media_type="text/csv; charset=utf-8",
         headers={
             "Content-Disposition": f'attachment; filename="analise_{analysis_id}.csv"'
+        },
+    )
+
+
+@router.get("/{analysis_id}/export/pdf")
+def export_pdf(analysis_id: int, db: Session = Depends(get_session)):
+    a = AnalysisRepository(db).get(analysis_id)
+    if not a:
+        raise HTTPException(404, detail="Análise não encontrada")
+    try:
+        data = build_analysis_pdf_bytes(a)
+    except Exception as e:
+        logger.exception("pdf export failed")
+        raise HTTPException(500, detail=f"Falha ao gerar PDF: {e!s}") from e
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="parecer_analise_{analysis_id}.pdf"'
+        },
+    )
+
+
+@router.get("/{analysis_id}/export/txt")
+def export_txt(analysis_id: int, db: Session = Depends(get_session)):
+    a = AnalysisRepository(db).get(analysis_id)
+    if not a:
+        raise HTTPException(404, detail="Análise não encontrada")
+    parts = [
+        a.technical_opinion or "",
+        "\n\n---\n\n",
+        a.executive_summary or "",
+        "\n\n---\n\n",
+        a.suggested_feedback or "",
+    ]
+    return Response(
+        content="".join(parts),
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="analise_{analysis_id}.txt"'
         },
     )

@@ -1,11 +1,16 @@
 import asyncio
+import json
 import logging
 import time
 from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import CNPJ_STATUS_NAO_VERIFICADO, CNPJ_STATUS_OK
+from app.core.constants import (
+    CNPJ_STATUS_NAO_VERIFICADO,
+    CNPJ_STATUS_OK,
+    REVIEW_PENDENTE,
+)
 from app.models.analysis import Analysis
 from app.models.analysis_field_result import AnalysisFieldResult
 from app.models.cnpj_validation import CnpjValidation
@@ -17,7 +22,12 @@ from app.services.art_parser_service import art_to_compare_dict
 from app.services.cnpj_service import consultar_cnpj
 from app.services.comparison_service import compare_art_act
 from app.services.ocr_service import extract_text
-from app.services.report_service import build_report_payload, derive_overall
+from app.services.report_service import (
+    build_report_payload,
+    build_score_breakdown,
+    build_technical_opinion,
+    derive_overall,
+)
 from app.services.risk_scoring_service import compute_risk_score
 from app.services.table_extraction_service import extract_tables_from_pdf
 from app.utils.text import extract_cnpj
@@ -53,7 +63,6 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
     db.flush()
 
     art_d = art_to_compare_dict(analysis.art)
-    fields = compare_art_act(art_d, struct)
 
     cnpj_from_doc = struct.get("cnpj") or extract_cnpj(text)
     cnpj_digits = only_digits(cnpj_from_doc or "") if cnpj_from_doc else ""
@@ -77,6 +86,15 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
         except Exception as e:
             logger.warning("cnpj async: %s", e)
             cnpj_status = CNPJ_STATUS_NAO_VERIFICADO
+            api_failed = True
+
+    fields = compare_art_act(
+        art_d,
+        struct,
+        ocr_text=text,
+        doc_confidence=float(conf or 0.5),
+        cnpj_api_failed=api_failed,
+    )
 
     suspicious = bool(analysis.upload.suspicious_metadata_flag)
 
@@ -88,8 +106,19 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
     elif risk <= 20 and overall != "VERMELHO":
         overall = "VERDE"
 
+    breakdown = build_score_breakdown(fields, risk, suspicious, api_failed)
+    opinion = build_technical_opinion(
+        fields, risk, overall, cnpj_status, suspicious
+    )
+
     report = build_report_payload(
-        analysis.id, fields, overall, risk, cnpj_status, suspicious
+        analysis.id,
+        fields,
+        overall,
+        risk,
+        cnpj_status,
+        suspicious,
+        cnpj_api_failed=api_failed,
     )
 
     for f in fields:
@@ -104,6 +133,11 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
                 status=f.status,
                 confidence=f.confidence,
                 justification=f.justification,
+                criticality=f.criticality,
+                category=f.category,
+                evidence_excerpt=f.evidence_excerpt,
+                evidence_page=f.evidence_page,
+                score_impact=f.score_impact,
             )
         )
 
@@ -120,9 +154,12 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
 
     analysis.overall_status = overall
     analysis.risk_score = risk
-    analysis.executive_summary = report["executive_summary"] + f" OCR: {engine}."
+    analysis.executive_summary = report["executive_summary"] + f" Motor OCR: {engine}."
     analysis.suggested_feedback = report["suggested_feedback"]
     analysis.cnpj_status = cnpj_status
+    analysis.technical_opinion = opinion
+    analysis.score_breakdown_json = json.dumps(breakdown, ensure_ascii=False)
+    analysis.review_status = REVIEW_PENDENTE
     analysis.processing_time_ms = int((time.perf_counter() - t0) * 1000)
     db.commit()
     logger.info("analysis %s done status=%s risk=%s", analysis_id, overall, risk)

@@ -20,6 +20,14 @@ export const api = {
         body: JSON.stringify(body),
       }),
     ),
+  patchJson: async <T>(path: string, body: unknown) =>
+    handle<T>(
+      await fetch(`${BASE}${path}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    ),
   upload: async <T>(path: string, file: File) => {
     const fd = new FormData();
     fd.append("file", file);

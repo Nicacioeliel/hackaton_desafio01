@@ -18,6 +18,9 @@ class Analysis(Base):
     suggested_feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     cnpj_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     processing_time_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    technical_opinion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    score_breakdown_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    review_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )

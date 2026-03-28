@@ -1,17 +1,24 @@
+import { Focus, PanelLeftClose } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { AnalysisResultSidebar } from "@/components/analysis/AnalysisResultSidebar";
 import { AnalysisResultWorkspace } from "@/components/analysis/AnalysisResultWorkspace";
 import { AnalysisStatusBadge } from "@/components/analysis/AnalysisStatusBadge";
+import { AnalysisStepper } from "@/components/layout/AnalysisStepper";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
+import { Button } from "@/components/ui/button";
 import { useAnalysis } from "@/hooks/useAnalysis";
 import { formatDate } from "@/lib/format";
 import { uploadFileUrl } from "@/services/uploads.service";
+import { useAppStore } from "@/store/app.store";
+import { cn } from "@/lib/utils";
 
 export function AnalysisResultPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const numId = Number(id);
   const q = useAnalysis(Number.isFinite(numId) ? numId : undefined);
+  const analystFocusMode = useAppStore((s) => s.analystFocusMode);
+  const setAnalystFocusMode = useAppStore((s) => s.setAnalystFocusMode);
 
   if (!Number.isFinite(numId))
     return <ErrorState message="ID de análise inválido." />;
@@ -29,8 +36,15 @@ export function AnalysisResultPage() {
 
   return (
     <div className="space-y-5 pb-8">
-      {/* Cabeçalho enxuto: foco no conteúdo analítico */}
-      <header className="flex flex-col gap-3 border-b border-border/80 pb-5 sm:flex-row sm:items-start sm:justify-between">
+      <AnalysisStepper
+        mode={{
+          kind: "resultado",
+          reviewStatus: data.review_status,
+        }}
+        className="mb-1"
+      />
+
+      <header className="flex flex-col gap-4 border-b border-border/80 pb-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <AnalysisStatusBadge status={data.overall_status} />
@@ -39,7 +53,7 @@ export function AnalysisResultPage() {
             </span>
           </div>
           <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-            Painel de triagem documental
+            Ambiente analítico — triagem ACT × ART
           </h1>
           <p className="max-w-3xl text-sm text-muted-fg">
             <span className="font-medium text-foreground">
@@ -62,19 +76,44 @@ export function AnalysisResultPage() {
             )}
           </p>
         </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button
+            type="button"
+            variant={analystFocusMode ? "secondary" : "outline"}
+            size="sm"
+            className="gap-2"
+            onClick={() => setAnalystFocusMode(!analystFocusMode)}
+          >
+            {analystFocusMode ? (
+              <>
+                <PanelLeftClose className="h-4 w-4" />
+                Sair do modo análise
+              </>
+            ) : (
+              <>
+                <Focus className="h-4 w-4" />
+                Modo análise
+              </>
+            )}
+          </Button>
+        </div>
       </header>
 
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-        {/* Coluna principal ~70% */}
         <div className="min-w-0 flex-1 lg:max-w-[70%] lg:flex-[0_0_70%]">
           <AnalysisResultWorkspace data={data} fileUrl={fileUrl} />
         </div>
 
-        {/* Sidebar ~30% sticky */}
-        <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:w-[30%] lg:max-w-[30%] lg:flex-[0_0_30%] lg:overflow-y-auto lg:pl-2">
+        <aside
+          className={cn(
+            "w-full shrink-0 lg:sticky lg:max-h-[calc(100vh-5.5rem)] lg:w-[30%] lg:max-w-[30%] lg:flex-[0_0_30%] lg:overflow-y-auto lg:pl-2",
+            analystFocusMode && "lg:top-14 lg:max-h-[calc(100vh-4rem)]",
+            !analystFocusMode && "lg:top-20",
+          )}
+        >
           <div className="rounded-xl border border-border/60 bg-muted/10 p-4 dark:bg-muted/5">
             <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-fg">
-              Resumo da análise
+              Centro de decisão
             </p>
             <AnalysisResultSidebar data={data} fileUrl={fileUrl} />
           </div>

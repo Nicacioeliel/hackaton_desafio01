@@ -1,4 +1,4 @@
-from sqlalchemy import Float, ForeignKey, String, Text
+from sqlalchemy import Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -17,6 +17,11 @@ class AnalysisFieldResult(Base):
     status: Mapped[str] = mapped_column(String(32))
     confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     justification: Mapped[str | None] = mapped_column(Text, nullable=True)
+    criticality: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    evidence_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
+    evidence_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    score_impact: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     analysis: Mapped["Analysis"] = relationship(
         "Analysis", back_populates="field_results"
