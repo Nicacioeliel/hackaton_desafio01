@@ -2,10 +2,16 @@ import { ShieldAlert } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
-export function RiskScoreCard({ score }: { score: number }) {
+export function RiskScoreCard({
+  score,
+  className,
+}: {
+  score: number;
+  className?: string;
+}) {
   const pct = Math.min(100, Math.max(0, score));
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <ShieldAlert className="h-5 w-5 text-primary" />

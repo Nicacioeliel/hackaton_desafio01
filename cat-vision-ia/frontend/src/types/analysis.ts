@@ -31,6 +31,7 @@ export interface AnalysisDetail {
   upload_id: number;
   upload_mime_type?: string | null;
   upload_original_name?: string | null;
+  upload_suspicious_metadata?: boolean | null;
   overall_status: string;
   risk_score: number;
   executive_summary: string | null;

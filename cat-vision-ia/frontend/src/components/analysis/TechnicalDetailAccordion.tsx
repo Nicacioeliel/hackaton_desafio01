@@ -7,12 +7,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AnalysisDetail } from "@/types/analysis";
 
-export function TechnicalDetailAccordion({ data }: { data: AnalysisDetail }) {
+export function TechnicalDetailAccordion({
+  data,
+  className,
+}: {
+  data: AnalysisDetail;
+  className?: string;
+}) {
   const ocrPreview = ""; // opcional: endpoint futuro com texto OCR completo
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Detalhe técnico</CardTitle>
+    <Card className={className}>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-semibold">Detalhe técnico</CardTitle>
       </CardHeader>
       <CardContent>
         <Accordion type="multiple" className="w-full">

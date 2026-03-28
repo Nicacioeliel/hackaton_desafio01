@@ -34,6 +34,9 @@ def _to_detail(a: Analysis) -> AnalysisDetailRead:
         upload_id=a.upload_id,
         upload_mime_type=a.upload.mime_type if a.upload else None,
         upload_original_name=a.upload.original_name if a.upload else None,
+        upload_suspicious_metadata=bool(a.upload.suspicious_metadata_flag)
+        if a.upload
+        else None,
         overall_status=a.overall_status,
         risk_score=a.risk_score,
         executive_summary=a.executive_summary,

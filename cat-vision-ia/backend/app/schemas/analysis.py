@@ -50,6 +50,7 @@ class AnalysisDetailRead(ORMModel):
     upload_id: int
     upload_mime_type: str | None = None
     upload_original_name: str | None = None
+    upload_suspicious_metadata: bool | None = None
     overall_status: str
     risk_score: float
     executive_summary: str | None = None

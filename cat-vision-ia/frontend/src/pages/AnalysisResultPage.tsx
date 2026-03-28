@@ -1,18 +1,11 @@
-import { Download, ExternalLink } from "lucide-react";
 import { useParams } from "react-router-dom";
+import { AnalysisResultSidebar } from "@/components/analysis/AnalysisResultSidebar";
+import { AnalysisResultWorkspace } from "@/components/analysis/AnalysisResultWorkspace";
 import { AnalysisStatusBadge } from "@/components/analysis/AnalysisStatusBadge";
-import { AnalystDecisionSupport } from "@/components/analysis/AnalystDecisionSupport";
-import { DocumentPanel } from "@/components/analysis/DocumentPanel";
-import { ExecutiveSummaryCard } from "@/components/analysis/ExecutiveSummaryCard";
-import { FieldComparisonTable } from "@/components/analysis/FieldComparisonTable";
-import { RiskScoreCard } from "@/components/analysis/RiskScoreCard";
-import { SuggestedFeedbackCard } from "@/components/analysis/SuggestedFeedbackCard";
-import { TechnicalDetailAccordion } from "@/components/analysis/TechnicalDetailAccordion";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
-import { Button } from "@/components/ui/button";
 import { useAnalysis } from "@/hooks/useAnalysis";
-import { exportCsvUrl, exportJsonUrl } from "@/services/analyses.service";
+import { formatDate } from "@/lib/format";
 import { uploadFileUrl } from "@/services/uploads.service";
 
 export function AnalysisResultPage() {
@@ -35,50 +28,57 @@ export function AnalysisResultPage() {
   const fileUrl = uploadFileUrl(data.upload_id);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-3">
-          <AnalysisStatusBadge status={data.overall_status} />
-          <span className="text-sm text-muted-fg">
-            Análise #{data.id} · {data.upload_original_name}
-          </span>
+    <div className="space-y-5 pb-8">
+      {/* Cabeçalho enxuto: foco no conteúdo analítico */}
+      <header className="flex flex-col gap-3 border-b border-border/80 pb-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <AnalysisStatusBadge status={data.overall_status} />
+            <span className="rounded-md bg-muted px-2 py-0.5 font-mono text-xs text-muted-fg">
+              #{data.id}
+            </span>
+          </div>
+          <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
+            Painel de triagem documental
+          </h1>
+          <p className="max-w-3xl text-sm text-muted-fg">
+            <span className="font-medium text-foreground">
+              {data.upload_original_name ?? "Documento"}
+            </span>
+            {data.created_at && (
+              <>
+                {" "}
+                · {formatDate(data.created_at)}
+              </>
+            )}
+            {data.processing_time_ms != null && (
+              <>
+                {" "}
+                · processado em{" "}
+                <span className="font-mono">
+                  {(data.processing_time_ms / 1000).toFixed(2)}s
+                </span>
+              </>
+            )}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <a href={exportJsonUrl(data.id)} download>
-              <Download className="mr-2 h-4 w-4" />
-              JSON
-            </a>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <a href={exportCsvUrl(data.id)} download>
-              <Download className="mr-2 h-4 w-4" />
-              CSV
-            </a>
-          </Button>
-          <Button variant="secondary" size="sm" asChild>
-            <a href={fileUrl} target="_blank" rel="noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              Abrir arquivo
-            </a>
-          </Button>
-        </div>
-      </div>
+      </header>
 
-      <div className="grid gap-6 xl:grid-cols-12">
-        <section className="space-y-4 xl:col-span-4">
-          <DocumentPanel fileUrl={fileUrl} mimeType={data.upload_mime_type} />
-        </section>
-        <section className="space-y-4 xl:col-span-5">
-          <FieldComparisonTable fields={data.field_results} />
-        </section>
-        <section className="space-y-4 xl:col-span-3">
-          <RiskScoreCard score={data.risk_score} />
-          <ExecutiveSummaryCard text={data.executive_summary} />
-          <SuggestedFeedbackCard text={data.suggested_feedback} />
-          <AnalystDecisionSupport />
-          <TechnicalDetailAccordion data={data} />
-        </section>
+      <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+        {/* Coluna principal ~70% */}
+        <div className="min-w-0 flex-1 lg:max-w-[70%] lg:flex-[0_0_70%]">
+          <AnalysisResultWorkspace data={data} fileUrl={fileUrl} />
+        </div>
+
+        {/* Sidebar ~30% sticky */}
+        <aside className="w-full shrink-0 lg:sticky lg:top-20 lg:max-h-[calc(100vh-5.5rem)] lg:w-[30%] lg:max-w-[30%] lg:flex-[0_0_30%] lg:overflow-y-auto lg:pl-2">
+          <div className="rounded-xl border border-border/60 bg-muted/10 p-4 dark:bg-muted/5">
+            <p className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-fg">
+              Resumo da análise
+            </p>
+            <AnalysisResultSidebar data={data} fileUrl={fileUrl} />
+          </div>
+        </aside>
       </div>
     </div>
   );

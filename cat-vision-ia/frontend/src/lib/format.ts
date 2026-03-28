@@ -20,6 +20,7 @@ export function statusLabel(s: string) {
     AUSENTE: "Ausente",
     DIVERGENTE: "Divergente",
     NAO_VERIFICADO: "Não verificado",
+    OK: "Verificado (API)",
   };
   return m[s] ?? s;
 }

@@ -1,26 +1,38 @@
+import { ImageDocumentViewer } from "./ImageDocumentViewer";
 import { OriginalDocumentViewer } from "./OriginalDocumentViewer";
 
 export function DocumentPanel({
   fileUrl,
   mimeType,
+  openFileHref,
+  minHeightClass,
+  className,
 }: {
   fileUrl: string;
   mimeType?: string | null;
+  openFileHref?: string;
+  minHeightClass?: string;
+  className?: string;
 }) {
-  const isPdf = (mimeType || "").includes("pdf") || fileUrl.toLowerCase().endsWith(".pdf");
+  const isPdf =
+    (mimeType || "").includes("pdf") ||
+    fileUrl.toLowerCase().includes(".pdf");
   if (isPdf) {
-    return <OriginalDocumentViewer fileUrl={fileUrl} />;
+    return (
+      <OriginalDocumentViewer
+        fileUrl={fileUrl}
+        openFileHref={openFileHref}
+        minHeightClass={minHeightClass}
+        className={className}
+      />
+    );
   }
   return (
-    <div className="rounded-xl border border-border bg-muted/20 p-4">
-      <p className="mb-3 text-sm font-medium">Pré-visualização (imagem)</p>
-      <div className="flex justify-center overflow-auto rounded-lg bg-card p-2">
-        <img
-          src={fileUrl}
-          alt="Documento enviado"
-          className="max-h-[min(70vh,720px)] w-auto object-contain"
-        />
-      </div>
-    </div>
+    <ImageDocumentViewer
+      fileUrl={fileUrl}
+      openFileHref={openFileHref}
+      minHeightClass={minHeightClass}
+      className={className}
+    />
   );
 }
