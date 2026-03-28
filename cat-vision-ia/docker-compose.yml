@@ -1,0 +1,20 @@
+# CAT Vision IA — stack opcional para demo com PostgreSQL
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: catvision
+      POSTGRES_PASSWORD: catvision
+      POSTGRES_DB: catvision
+    ports:
+      - "5432:5432"
+    volumes:
+      - catvision_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U catvision -d catvision"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  catvision_pg:
