@@ -9,7 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ErrorState } from "@/components/common/ErrorState";
 import { LoadingState } from "@/components/common/LoadingState";
-import { formatDate, statusLabel } from "@/lib/format";
+import { NormativeStatusBadge } from "@/components/analysis/NormativeStatusBadge";
+import { formatDate, normativeGlobalLabel, statusLabel } from "@/lib/format";
 import {
   exportCsvUrl,
   exportJsonUrl,
@@ -34,6 +35,9 @@ export function AnalysisHistoryPage() {
   const [riskMin, setRiskMin] = useState("");
   const [riskMax, setRiskMax] = useState("");
   const [sort, setSort] = useState<SortKey>("date_desc");
+  const [normativeStatus, setNormativeStatus] = useState<
+    "CONFORME" | "PARCIAL" | "NAO_CONFORME" | undefined
+  >();
 
   const params = useMemo(
     () => ({
@@ -43,8 +47,9 @@ export function AnalysisHistoryPage() {
       risk_min: riskMin.trim() !== "" ? Number(riskMin) : undefined,
       risk_max: riskMax.trim() !== "" ? Number(riskMax) : undefined,
       sort,
+      normative_status: normativeStatus,
     }),
-    [status, artQ, searchQ, riskMin, riskMax, sort],
+    [status, artQ, searchQ, riskMin, riskMax, sort, normativeStatus],
   );
 
   const q = useQuery({
@@ -91,6 +96,12 @@ export function AnalysisHistoryPage() {
           ? "Ordenação: maior risco"
           : "Ordenação: menor risco",
       onClear: () => setSort("date_desc"),
+    });
+  if (normativeStatus)
+    activeChips.push({
+      key: "norm",
+      label: `Normativo: ${normativeGlobalLabel(normativeStatus)}`,
+      onClear: () => setNormativeStatus(undefined),
     });
 
   return (
@@ -200,6 +211,32 @@ export function AnalysisHistoryPage() {
             </div>
           </div>
 
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-fg">
+              Conformidade normativa (Res. 1.137)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { v: undefined, l: "Todos" },
+                  { v: "CONFORME" as const, l: "Conforme" },
+                  { v: "PARCIAL" as const, l: "Parcial" },
+                  { v: "NAO_CONFORME" as const, l: "Não conforme" },
+                ] as const
+              ).map((f) => (
+                <Button
+                  key={f.l}
+                  type="button"
+                  size="sm"
+                  variant={normativeStatus === f.v ? "default" : "outline"}
+                  onClick={() => setNormativeStatus(f.v)}
+                >
+                  {f.l}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {activeChips.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
               <span className="text-xs font-medium text-muted-fg">Filtros ativos:</span>
@@ -240,13 +277,14 @@ export function AnalysisHistoryPage() {
       )}
       {q.data && q.data.length > 0 && (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[880px] text-sm">
+          <table className="w-full min-w-[960px] text-sm">
             <thead className="sticky top-0 z-10 bg-muted/90 text-left text-muted-fg backdrop-blur-sm">
               <tr>
                 <th className="px-4 py-3 font-medium">ART</th>
                 <th className="px-3 py-3 font-medium">Arquivo</th>
                 <th className="px-3 py-3 font-medium">Resumo</th>
                 <th className="px-3 py-3 font-medium">Status</th>
+                <th className="px-3 py-3 font-medium">Normativo</th>
                 <th className="px-3 py-3 font-medium">Risco</th>
                 <th className="px-3 py-3 font-medium">Data</th>
                 <th className="px-4 py-3 text-right font-medium">Ações</th>
@@ -268,6 +306,20 @@ export function AnalysisHistoryPage() {
                     <Badge variant={statusVariant(r.overall_status)}>
                       {statusLabel(r.overall_status)}
                     </Badge>
+                  </td>
+                  <td className="px-3 py-2">
+                    {r.normative_status ? (
+                      <div className="flex flex-col gap-0.5">
+                        <NormativeStatusBadge status={r.normative_status} />
+                        {r.normative_score != null && (
+                          <span className="font-mono text-[10px] text-muted-fg">
+                            {r.normative_score.toFixed(0)}%
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-fg">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-3 tabular-nums">{r.risk_score.toFixed(1)}</td>
                   <td className="px-3 py-3 text-muted-fg">

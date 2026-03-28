@@ -54,6 +54,22 @@ docker compose up -d
 | `pytest app/tests -q` | Testes unitários básicos |
 | `alembic upgrade head` | Migrações (pasta `backend`) |
 
+## Validação normativa (CONFEA / CREA)
+
+O backend inclui uma **camada de regras** em `backend/app/rules/`:
+
+- **`normativa/resolucao_1137.py`** — regras parametrizadas com base no **conteúdo típico do Anexo IV** da **Resolução nº 1.137/2023** (presença de dados no ACT e consistência com a ART selecionada).
+- **`normativa/resolucao_1160.py`** — placeholder multi-norma para futura Res. 1.160/2025.
+- **`normativa/regras_gerais.py`** — princípios de rastreabilidade.
+- **`engine/rule_engine.py`** — executa todas as regras e calcula **`normative_score`**, **`normative_status`** (CONFORME / PARCIAL / NAO_CONFORME) e o detalhamento em JSON.
+
+Cada análise passa a persistir:
+
+- Resultados normativos completos (`normative_results_json`) para a aba **Validação normativa** no frontend.
+- Índice e breakdown no modelo `Analysis`; por campo, `normative_conformity`, `regulatory_impact` e `applied_rules_json`.
+
+**Aviso:** as referências a artigos são **didáticas** para apoio ao analista. A interpretação normativa definitiva é do **CREA** e do processo administrativo.
+
 ## Documentação
 
 - [docs/arquitetura.md](docs/arquitetura.md)

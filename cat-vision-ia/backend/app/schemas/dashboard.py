@@ -12,3 +12,8 @@ class DashboardMetrics(BaseModel):
     top_inconsistencies: list[dict[str, str | int]] = Field(default_factory=list)
     distribuicao_criticidade: list[dict[str, str | int]] = Field(default_factory=list)
     distribuicao_status_campos: list[dict[str, str | int]] = Field(default_factory=list)
+    normativa_conforme: int = 0
+    normativa_parcial: int = 0
+    normativa_nao_conforme: int = 0
+    taxa_conformidade_normativa_pct: float | None = None
+    top_normative_violations: list[dict[str, str | int]] = Field(default_factory=list)

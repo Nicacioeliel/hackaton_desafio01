@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock,
   FileSearch,
+  Scale,
 } from "lucide-react";
 import { AnalysisStatusChart } from "@/components/dashboard/AnalysisStatusChart";
 import { DistributionStripChart } from "@/components/dashboard/DistributionStripChart";
@@ -106,6 +107,62 @@ export function DashboardPage() {
         />
         <InconsistencyChart items={m.top_inconsistencies} />
       </div>
+
+      <h2 className="mt-10 text-lg font-semibold tracking-tight">
+        Conformidade normativa (Res. 1.137/2023 e regras ativas)
+      </h2>
+      <p className="mt-1 max-w-3xl text-sm text-muted-fg">
+       Percentuais com base em análises que já possuem índice normativo calculado. Documentos
+        anteriores à atualização podem aparecer como &quot;—&quot; no histórico.
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard
+          label="Conformes (normativo)"
+          value={m.normativa_conforme ?? 0}
+          tone="success"
+          hint={
+            m.taxa_conformidade_normativa_pct != null
+              ? `${m.taxa_conformidade_normativa_pct}% dos com índice`
+              : undefined
+          }
+          icon={CheckCircle2}
+        />
+        <MetricCard
+          label="Parcialmente conformes"
+          value={m.normativa_parcial ?? 0}
+          tone="warning"
+          icon={Clock}
+        />
+        <MetricCard
+          label="Não conformes"
+          value={m.normativa_nao_conforme ?? 0}
+          tone="danger"
+          icon={AlertTriangle}
+        />
+        <MetricCard
+          label="Índice normativo médio (referência)"
+          value={
+            m.taxa_conformidade_normativa_pct != null
+              ? `${m.taxa_conformidade_normativa_pct}%`
+              : "—"
+          }
+          hint="Taxa de conformes sobre análises com dado normativo"
+          icon={Scale}
+        />
+      </div>
+
+      {(m.top_normative_violations?.length ?? 0) > 0 && (
+        <div className="mt-6">
+          <DistributionStripChart
+            title="Principais regras normativas apontadas (agregado recente)"
+            rows={(m.top_normative_violations ?? []).map((x) => ({
+              key: x.rule_id,
+              count: x.count,
+            }))}
+            formatLabel={(k) => k.replace(/^R[0-9]+_/, "").replace(/_/g, " ")}
+          />
+        </div>
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <DistributionStripChart

@@ -21,6 +21,10 @@ class Analysis(Base):
     technical_opinion: Mapped[str | None] = mapped_column(Text, nullable=True)
     score_breakdown_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     review_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    normative_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    normative_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    normative_breakdown_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    normative_results_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), index=True
     )

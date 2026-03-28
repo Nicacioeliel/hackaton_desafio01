@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ExecutiveSummaryCard } from "@/components/analysis/ExecutiveSummaryCard";
+import { NormativeScoreCard } from "@/components/analysis/NormativeScoreCard";
 import { RiskScoreCard } from "@/components/analysis/RiskScoreCard";
 import { ScoreExplanationCard } from "@/components/analysis/ScoreExplanationCard";
 import { SuggestedFeedbackCard } from "@/components/analysis/SuggestedFeedbackCard";
@@ -87,6 +88,13 @@ export function AnalysisResultSidebar({
       <ScoreExplanationCard
         breakdown={data.score_breakdown}
         score={data.risk_score}
+        className={cardStyle}
+      />
+
+      <NormativeScoreCard
+        score={data.normative_score}
+        status={data.normative_status}
+        breakdown={data.normative_breakdown}
         className={cardStyle}
       />
 

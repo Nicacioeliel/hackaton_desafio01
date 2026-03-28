@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Columns2, FileText, Table2 } from "lucide-react";
+import { Columns2, FileText, Gavel, Table2 } from "lucide-react";
 import { DocumentPanel } from "@/components/analysis/DocumentPanel";
 import { EvidenceDrawer } from "@/components/analysis/EvidenceDrawer";
 import { FieldComparisonTable } from "@/components/analysis/FieldComparisonTable";
+import { NormativeValidationPanel } from "@/components/analysis/NormativeValidationPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalysisDetail, FieldResult } from "@/types/analysis";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,7 @@ export function AnalysisResultWorkspace({
   return (
     <>
       <Tabs defaultValue="documento" className="w-full">
-        <TabsList className="grid h-auto min-h-[3.25rem] w-full grid-cols-1 gap-2 rounded-xl border border-border/80 bg-gradient-to-b from-muted/60 to-muted/30 p-2 shadow-inner sm:grid-cols-3">
+        <TabsList className="grid h-auto min-h-[3.25rem] w-full grid-cols-2 gap-2 rounded-xl border border-border/80 bg-gradient-to-b from-muted/60 to-muted/30 p-2 shadow-inner lg:grid-cols-4">
           <TabsTrigger
             value="documento"
             className={cn(
@@ -50,7 +51,17 @@ export function AnalysisResultWorkspace({
             )}
           >
             <Columns2 className="h-4 w-4 shrink-0 opacity-80" />
-            Comparação lado a lado
+            Comparação
+          </TabsTrigger>
+          <TabsTrigger
+            value="normativa"
+            className={cn(
+              "gap-2 rounded-lg py-3 text-sm font-semibold data-[state=active]:bg-card data-[state=active]:shadow-md",
+              "data-[state=active]:ring-1 data-[state=active]:ring-primary/30",
+            )}
+          >
+            <Gavel className="h-4 w-4 shrink-0 opacity-80" />
+            Validação normativa
           </TabsTrigger>
         </TabsList>
 
@@ -98,6 +109,13 @@ export function AnalysisResultWorkspace({
               />
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent
+          value="normativa"
+          className="mt-5 outline-none transition-opacity duration-200 data-[state=inactive]:hidden"
+        >
+          <NormativeValidationPanel data={data} />
         </TabsContent>
       </Tabs>
 

@@ -22,6 +22,9 @@ class AnalysisFieldResult(Base):
     evidence_excerpt: Mapped[str | None] = mapped_column(Text, nullable=True)
     evidence_page: Mapped[int | None] = mapped_column(Integer, nullable=True)
     score_impact: Mapped[float | None] = mapped_column(Float, nullable=True)
+    normative_conformity: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    regulatory_impact: Mapped[str | None] = mapped_column(Text, nullable=True)
+    applied_rules_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     analysis: Mapped["Analysis"] = relationship(
         "Analysis", back_populates="field_results"

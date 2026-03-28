@@ -21,6 +21,7 @@ export interface ListAnalysesParams {
   sort?: "date_desc" | "risk_desc" | "risk_asc";
   skip?: number;
   limit?: number;
+  normative_status?: "CONFORME" | "PARCIAL" | "NAO_CONFORME";
 }
 
 export function fetchAnalyses(params?: ListAnalysesParams) {
@@ -31,6 +32,8 @@ export function fetchAnalyses(params?: ListAnalysesParams) {
   if (params?.risk_min != null) sp.set("risk_min", String(params.risk_min));
   if (params?.risk_max != null) sp.set("risk_max", String(params.risk_max));
   if (params?.sort) sp.set("sort", params.sort);
+  if (params?.normative_status)
+    sp.set("normative_status", params.normative_status);
   if (params?.skip != null) sp.set("skip", String(params.skip));
   if (params?.limit != null) sp.set("limit", String(params.limit));
   const q = sp.toString();

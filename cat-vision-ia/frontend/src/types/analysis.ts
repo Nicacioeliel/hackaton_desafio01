@@ -13,6 +13,36 @@ export interface FieldResult {
   evidence_excerpt?: string | null;
   evidence_page?: number | null;
   score_impact?: number | null;
+  normative_conformity?: string | null;
+  regulatory_impact?: string | null;
+  applied_rules?: Array<Record<string, unknown>>;
+}
+
+export interface NormativeRuleRow {
+  rule_id: string;
+  nome: string;
+  resolucao: string;
+  resolucao_versao?: string;
+  artigo: string;
+  obrigatoriedade: string;
+  campo_relacionado: string | null;
+  tipo_validacao: string;
+  status: string;
+  severidade: string;
+  justificativa: string;
+  impacto_regulatorio: string;
+}
+
+export interface NormativeBreakdown {
+  normative_score: number;
+  normative_status: string;
+  violations_critical: number;
+  violations_medium: number;
+  violations_low: number;
+  obligatory_met: number;
+  obligatory_total: number;
+  lines: string[];
+  top_violations: Array<{ rule_id?: string; nome?: string; status?: string }>;
 }
 
 /** Breakdown explicável do score (API `score_breakdown`) */
@@ -67,6 +97,10 @@ export interface AnalysisDetail {
   technical_opinion?: string | null;
   score_breakdown?: ScoreBreakdown | null;
   review_status?: string | null;
+  normative_score?: number | null;
+  normative_status?: string | null;
+  normative_breakdown?: NormativeBreakdown | null;
+  normative_rules?: NormativeRuleRow[];
 }
 
 export interface AnalysisListItem {
@@ -80,4 +114,6 @@ export interface AnalysisListItem {
   art_numero: string | null;
   upload_original_name: string | null;
   summary_hint?: string | null;
+  normative_score?: number | null;
+  normative_status?: string | null;
 }

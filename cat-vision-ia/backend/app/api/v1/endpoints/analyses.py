@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_session
 from app.core.constants import CNPJ_STATUS_NAO_VERIFICADO, REVIEW_CORRECAO, REVIEW_REVISADO
 from app.models.analysis import Analysis
+from app.models.analysis_field_result import AnalysisFieldResult
 from app.repositories.analysis_repository import AnalysisRepository
 from app.repositories.art_repository import ArtRepository
 from app.repositories.upload_repository import UploadRepository
@@ -47,6 +48,38 @@ def _parse_breakdown(a: Analysis) -> dict | None:
         return None
 
 
+def _parse_normative_breakdown(a: Analysis) -> dict | None:
+    if not getattr(a, "normative_breakdown_json", None):
+        return None
+    try:
+        return json.loads(a.normative_breakdown_json)
+    except json.JSONDecodeError:
+        return None
+
+
+def _parse_normative_rules(a: Analysis) -> list[dict]:
+    if not getattr(a, "normative_results_json", None):
+        return []
+    try:
+        raw = json.loads(a.normative_results_json)
+        return raw if isinstance(raw, list) else []
+    except json.JSONDecodeError:
+        return []
+
+
+def _serialize_field_result(f: AnalysisFieldResult) -> FieldResultRead:
+    base = FieldResultRead.model_validate(f)
+    applied: list = []
+    if getattr(f, "applied_rules_json", None):
+        try:
+            parsed = json.loads(f.applied_rules_json)
+            if isinstance(parsed, list):
+                applied = parsed
+        except json.JSONDecodeError:
+            pass
+    return base.model_copy(update={"applied_rules": applied})
+
+
 def _to_detail(a: Analysis) -> AnalysisDetailRead:
     return AnalysisDetailRead(
         id=a.id,
@@ -64,7 +97,7 @@ def _to_detail(a: Analysis) -> AnalysisDetailRead:
         cnpj_status=a.cnpj_status,
         processing_time_ms=a.processing_time_ms,
         created_at=a.created_at,
-        field_results=[FieldResultRead.model_validate(f) for f in (a.field_results or [])],
+        field_results=[_serialize_field_result(f) for f in (a.field_results or [])],
         tables=[TableExtractionRead.model_validate(t) for t in (a.tables or [])],
         cnpj_validation=CnpjValidationRead.model_validate(a.cnpj_validation)
         if a.cnpj_validation
@@ -72,6 +105,10 @@ def _to_detail(a: Analysis) -> AnalysisDetailRead:
         technical_opinion=a.technical_opinion,
         score_breakdown=_parse_breakdown(a),
         review_status=a.review_status or "PENDENTE",
+        normative_score=getattr(a, "normative_score", None),
+        normative_status=getattr(a, "normative_status", None),
+        normative_breakdown=_parse_normative_breakdown(a),
+        normative_rules=_parse_normative_rules(a),
     )
 
 
@@ -119,6 +156,10 @@ def list_analyses(
     risk_min: float | None = Query(None),
     risk_max: float | None = Query(None),
     sort: str = Query("date_desc", description="date_desc | risk_desc | risk_asc"),
+    normative_status: str | None = Query(
+        None,
+        description="CONFORME | PARCIAL | NAO_CONFORME",
+    ),
 ):
     repo = AnalysisRepository(db)
     rows, _ = repo.list_page(
@@ -130,6 +171,7 @@ def list_analyses(
         risk_min=risk_min,
         risk_max=risk_max,
         sort=sort,
+        normative_status=normative_status,
     )
     out: list[AnalysisListItem] = []
     for a in rows:
@@ -150,6 +192,8 @@ def list_analyses(
                 art_numero=a.art.numero_art if a.art else None,
                 upload_original_name=a.upload.original_name if a.upload else None,
                 summary_hint=hint,
+                normative_score=getattr(a, "normative_score", None),
+                normative_status=getattr(a, "normative_status", None),
             )
         )
     return out

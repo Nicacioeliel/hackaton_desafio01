@@ -44,6 +44,23 @@ export function confidenceLabel(conf: number | null | undefined): string {
   return "Baixa";
 }
 
+export function normativeGlobalLabel(s: string | null | undefined) {
+  const u = (s || "").toUpperCase();
+  if (u === "CONFORME") return "Conforme";
+  if (u === "PARCIAL") return "Parcialmente conforme";
+  if (u === "NAO_CONFORME") return "Não conforme";
+  return s || "—";
+}
+
+export function normativeRuleStatusLabel(s: string) {
+  const m: Record<string, string> = {
+    ATENDIDA: "Atendida",
+    NAO_ATENDIDA: "Não conformidade normativa",
+    ATENCAO: "Atenção / inconclusivo",
+  };
+  return m[s] ?? s;
+}
+
 export function confidencePercent(conf: number | null | undefined): string {
   if (conf == null || Number.isNaN(conf)) return "—";
   const v = conf > 1 ? conf : conf * 100;

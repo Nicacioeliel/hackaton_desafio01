@@ -17,12 +17,16 @@ from app.models.cnpj_validation import CnpjValidation
 from app.models.document_extraction import DocumentExtraction
 from app.models.table_extraction import TableExtraction
 from app.repositories.analysis_repository import AnalysisRepository
+from app.rules.engine.rule_engine import run_normative_evaluation
+from app.rules.schemas.rule_result import NormativeContext
 from app.services.act_parser_service import parse_act
 from app.services.art_parser_service import art_to_compare_dict
 from app.services.cnpj_service import consultar_cnpj
 from app.services.comparison_service import compare_art_act
+from app.services.normative_field_service import bundle_for_field
 from app.services.ocr_service import extract_text
 from app.services.report_service import (
+    build_normative_opinion_block_from_breakdown,
     build_report_payload,
     build_score_breakdown,
     build_technical_opinion,
@@ -96,6 +100,11 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
         cnpj_api_failed=api_failed,
     )
 
+    norm_ctx = NormativeContext(art=art_d, act=struct, field_results=fields)
+    norm_results, norm_summary = run_normative_evaluation(norm_ctx)
+    norm_breakdown = norm_summary.breakdown_dict()
+    norm_results_payload = [r.to_dict() for r in norm_results]
+
     suspicious = bool(analysis.upload.suspicious_metadata_flag)
 
     risk = compute_risk_score(fields, suspicious, api_failed)
@@ -110,6 +119,7 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
     opinion = build_technical_opinion(
         fields, risk, overall, cnpj_status, suspicious
     )
+    opinion += build_normative_opinion_block_from_breakdown(norm_breakdown)
 
     report = build_report_payload(
         analysis.id,
@@ -122,6 +132,7 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
     )
 
     for f in fields:
+        nb = bundle_for_field(norm_results, f.field_name)
         db.add(
             AnalysisFieldResult(
                 analysis_id=analysis.id,
@@ -138,6 +149,9 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
                 evidence_excerpt=f.evidence_excerpt,
                 evidence_page=f.evidence_page,
                 score_impact=f.score_impact,
+                normative_conformity=nb["normative_conformity"],
+                regulatory_impact=nb["regulatory_impact"],
+                applied_rules_json=nb["applied_rules_json"],
             )
         )
 
@@ -154,11 +168,19 @@ def run_analysis_pipeline(db: Session, analysis_id: int) -> None:
 
     analysis.overall_status = overall
     analysis.risk_score = risk
-    analysis.executive_summary = report["executive_summary"] + f" Motor OCR: {engine}."
+    analysis.executive_summary = (
+        report["executive_summary"]
+        + f" Conformidade normativa (referência Res. 1.137/2023): {norm_summary.normative_score:.1f}% ({norm_summary.normative_status})."
+        + f" Motor OCR: {engine}."
+    )
     analysis.suggested_feedback = report["suggested_feedback"]
     analysis.cnpj_status = cnpj_status
     analysis.technical_opinion = opinion
     analysis.score_breakdown_json = json.dumps(breakdown, ensure_ascii=False)
+    analysis.normative_score = norm_summary.normative_score
+    analysis.normative_status = norm_summary.normative_status
+    analysis.normative_breakdown_json = json.dumps(norm_breakdown, ensure_ascii=False)
+    analysis.normative_results_json = json.dumps(norm_results_payload, ensure_ascii=False)
     analysis.review_status = REVIEW_PENDENTE
     analysis.processing_time_ms = int((time.perf_counter() - t0) * 1000)
     db.commit()

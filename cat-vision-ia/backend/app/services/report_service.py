@@ -266,6 +266,47 @@ def derive_overall(fields: list[FieldCompareResult]) -> str:
     return overall_from_fields([f.status for f in fields])
 
 
+def build_normative_opinion_block_from_breakdown(br: dict | None) -> str:
+    """Texto de parecer a partir do JSON/dict de breakdown normativo."""
+    if not br:
+        return ""
+    score = br.get("normative_score")
+    stat = br.get("normative_status", "—")
+    lines = [
+        "",
+        "5. Conformidade normativa (parametrização CONFEA — Resolução 1.137/2023 e demais regras ativas)",
+        f"Índice de conformidade normativa: {score}/100 — classificação: {stat}.",
+        "Conforme a Resolução 1.137 do CONFEA, identificaram-se os seguintes contadores automáticos "
+        f"(obrigatórias atendidas: {br.get('obligatory_met')}/{max(br.get('obligatory_total') or 1, 1)}; "
+        f"violações: {br.get('violations_critical', 0)} críticas, "
+        f"{br.get('violations_medium', 0)} médias, {br.get('violations_low', 0)} leves).",
+    ]
+    for L in br.get("lines") or []:
+        if L and L not in lines:
+            lines.append(L)
+    fails = [x for x in br.get("top_violations") or [] if x.get("status") != "ATENDIDA"]
+    if fails:
+        lines.append("Principais apontamentos normativos:")
+        for t in fails[:8]:
+            lines.append(f"  — [{t.get('rule_id')}] {t.get('nome')}: {t.get('status')}.")
+    lines.append(
+        "Recomenda-se revisão humana dos itens não conformes ou em atenção, com possível "
+        "impacto na validação da CAT junto ao acervo técnico."
+    )
+    return "\n".join(lines)
+
+
+def build_normative_opinion_block(analysis) -> str:
+    """Seção de parecer sobre conformidade normativa (dados persistidos no ORM)."""
+    if not getattr(analysis, "normative_breakdown_json", None):
+        return ""
+    try:
+        br = json.loads(analysis.normative_breakdown_json)
+    except json.JSONDecodeError:
+        return ""
+    return build_normative_opinion_block_from_breakdown(br)
+
+
 def regenerate_stored_opinion_from_analysis(analysis) -> tuple[str, str]:
     """Recalcula parecer e breakdown a partir dos registros persistidos."""
     from app.services.field_result_adapter import orm_to_compare_results
@@ -288,4 +329,5 @@ def regenerate_stored_opinion_from_analysis(analysis) -> tuple[str, str]:
         analysis.cnpj_status,
         suspicious,
     )
+    opinion += build_normative_opinion_block(analysis)
     return opinion, json.dumps(bd, ensure_ascii=False)

@@ -22,6 +22,9 @@ class FieldResultRead(ORMModel):
     evidence_excerpt: str | None = None
     evidence_page: int | None = None
     score_impact: float | None = None
+    normative_conformity: str | None = None
+    regulatory_impact: str | None = None
+    applied_rules: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class CnpjValidationRead(ORMModel):
@@ -48,6 +51,8 @@ class AnalysisListItem(ORMModel):
     art_numero: str | None = None
     upload_original_name: str | None = None
     summary_hint: str | None = None
+    normative_score: float | None = None
+    normative_status: str | None = None
 
 
 class AnalysisDetailRead(ORMModel):
@@ -70,6 +75,10 @@ class AnalysisDetailRead(ORMModel):
     technical_opinion: str | None = None
     score_breakdown: dict[str, Any] | None = None
     review_status: str | None = None
+    normative_score: float | None = None
+    normative_status: str | None = None
+    normative_breakdown: dict[str, Any] | None = None
+    normative_rules: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class AnalysisReviewUpdate(BaseModel):

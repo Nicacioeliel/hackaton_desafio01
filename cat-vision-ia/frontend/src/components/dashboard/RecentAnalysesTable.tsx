@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { NormativeStatusBadge } from "@/components/analysis/NormativeStatusBadge";
 import { formatDate, statusLabel } from "@/lib/format";
 import type { AnalysisListItem } from "@/types/analysis";
 
@@ -23,12 +24,13 @@ export function RecentAnalysesTable({ rows }: { rows: AnalysisListItem[] }) {
         </Button>
       </CardHeader>
       <CardContent className="overflow-x-auto p-0">
-        <table className="w-full min-w-[640px] text-sm">
+        <table className="w-full min-w-[780px] text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted-fg">
               <th className="px-5 py-3 font-medium">ART</th>
               <th className="px-3 py-3 font-medium">Documento</th>
               <th className="px-3 py-3 font-medium">Status</th>
+              <th className="px-3 py-3 font-medium">Normativa</th>
               <th className="px-3 py-3 font-medium">Risco</th>
               <th className="px-3 py-3 font-medium">Quando</th>
               <th className="px-5 py-3" />
@@ -50,6 +52,20 @@ export function RecentAnalysesTable({ rows }: { rows: AnalysisListItem[] }) {
                   <Badge variant={statusVariant(r.overall_status)}>
                     {statusLabel(r.overall_status)}
                   </Badge>
+                </td>
+                <td className="px-3 py-2">
+                  {r.normative_status ? (
+                    <div className="flex flex-col gap-0.5">
+                      <NormativeStatusBadge status={r.normative_status} />
+                      {r.normative_score != null && (
+                        <span className="font-mono text-[10px] text-muted-fg">
+                          {r.normative_score.toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-fg">—</span>
+                  )}
                 </td>
                 <td className="px-3 py-3 tabular-nums">{r.risk_score.toFixed(1)}</td>
                 <td className="px-3 py-3 text-muted-fg">

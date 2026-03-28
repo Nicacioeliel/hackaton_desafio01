@@ -38,10 +38,13 @@ class AnalysisRepository(BaseRepository[Analysis]):
         risk_max: float | None = None,
         search_q: str | None = None,
         sort: str = "date_desc",
+        normative_status: str | None = None,
     ) -> tuple[list[Analysis], int]:
         conditions: list = []
         if status:
             conditions.append(Analysis.overall_status == status)
+        if normative_status:
+            conditions.append(Analysis.normative_status == normative_status)
         if risk_min is not None:
             conditions.append(Analysis.risk_score >= risk_min)
         if risk_max is not None:
@@ -155,6 +158,15 @@ class DashboardRepository(BaseRepository[Analysis]):
             func.count(AnalysisFieldResult.id).label("cnt"),
         ).group_by(AnalysisFieldResult.status)
         status_field_dist = self.db.execute(status_field_stmt).all()
+        n_conf = self.db.execute(
+            select(func.count()).where(Analysis.normative_status == "CONFORME")
+        ).scalar_one()
+        n_parc = self.db.execute(
+            select(func.count()).where(Analysis.normative_status == "PARCIAL")
+        ).scalar_one()
+        n_nc = self.db.execute(
+            select(func.count()).where(Analysis.normative_status == "NAO_CONFORME")
+        ).scalar_one()
         return {
             "total": int(total or 0),
             "verde": int(green or 0),
@@ -171,4 +183,7 @@ class DashboardRepository(BaseRepository[Analysis]):
             "field_status_distribution": [
                 {"status": str(r[0]), "count": int(r[1])} for r in status_field_dist
             ],
+            "normative_conforme": int(n_conf or 0),
+            "normative_parcial": int(n_parc or 0),
+            "normative_nao_conforme": int(n_nc or 0),
         }
