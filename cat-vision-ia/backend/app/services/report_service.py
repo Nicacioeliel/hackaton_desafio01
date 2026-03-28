@@ -49,9 +49,11 @@ def build_report_payload(
             feedback_lines.append(
                 f"- Ausência/incompleteza em '{f.field_name}': não foi possível extrair do documento de forma confiável."
             )
-    feedback_lines.append(
-        "",
-        "Esta mensagem é sugestiva e não substitui a análise humana do CREA-MA.",
+    feedback_lines.extend(
+        [
+            "",
+            "Esta mensagem é sugestiva e não substitui a análise humana do CREA-MA.",
+        ]
     )
     suggested = "\n".join(feedback_lines)
 
